@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>وقفة</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#eef2f6;--card:#fff;--ink:#16252b;--mute:#5d6f78;--line:#d5dee5;--pri:#0f5c5c;--on:#fff;--amb:#b97a00;--ambbg:#fff3d6;--ok:#1d7a46;--okbg:#dff3e7;--bad:#b3322b;--blu:#1f5fa8;--blubg:#e1ecf8}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1a1f;--card:#18262c;--ink:#e8f0f3;--mute:#93a6af;--line:#2b3d45;--pri:#4fc3c3;--on:#0b1a1a;--amb:#f0b840;--ambbg:#3a2f12;--ok:#5fd18d;--okbg:#14301f;--bad:#ff8a82;--blu:#7db4f0;--blubg:#16293f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Cairo,system-ui,sans-serif;line-height:1.6}
+main{max-width:640px;margin:0 auto;padding:16px 16px 60px}
+h1{font-size:26px;font-weight:800;margin:8px 0}
+h2{font-size:17px;margin:18px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 4px;font-size:17px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--mute);font-size:14px;margin:4px 0 8px}
+.badge{display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;background:var(--blubg);color:var(--blu)}
+.b-taken,.b-review{background:var(--ambbg);color:var(--amb)}.b-approved{background:var(--okbg);color:var(--ok)}
+.rew{font-weight:800;color:var(--pri)}
+label{display:block;font-weight:600;font-size:14px;margin:10px 0 4px}
+input,select,textarea{width:100%;font:400 16px Cairo,sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blu);outline-offset:2px}
+.btn{border:0;border-radius:10px;padding:9px 14px;font:600 15px Cairo,sans-serif;cursor:pointer;background:var(--pri);color:var(--on)}
+.ghost{background:none;border:1px solid var(--line);color:var(--ink)}.ok{background:var(--ok);color:#fff}.bad{background:var(--bad);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.top .sp{flex:1}
+video,img{width:100%;max-height:260px;object-fit:contain;border-radius:10px;background:#000;margin-top:8px}
+.hint{font-size:13px;color:var(--mute);margin-top:6px}.empty{text-align:center;color:var(--mute);padding:24px;border:1px dashed var(--line);border-radius:14px}
+.note{font-size:14px;padding:8px 10px;border-radius:10px;background:var(--ambbg);color:var(--amb);margin-top:8px}
+.toast{position:fixed;inset-inline:16px;bottom:16px;max-width:420px;margin:auto;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;text-align:center;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="toast" id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var SB_URL="https://fonczgmjnjbgxyhhdpvi.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvbmN6Z21qbmpiZ3h5aGhkcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjQzNDAsImV4cCI6MjEwODYwMDM0MH0.s5jqDYr2yWEUnkTDwmxFNWwy5O7KSaNicAYrANNEmDs";
+var sb=supabase.createClient(SB_URL,SB_KEY),U=null,ME=null,T=[],N=[],PI=[],R={},OFFER=null,REC=null,BELL=false,MODE="in",tick=0;
+var $=function(i){return document.getElementById(i)};
+var ST={open:"متاحة",taken:"قيد التنفيذ",review:"تحت المراجعة",approved:"تمت الموافقة"};
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function toast(t){var e=$("toast");e.textContent=t;e.classList.add("show");setTimeout(function(){e.classList.remove("show")},2600)}
+function mmss(ms){var s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
+function stars(p){return p&&p.rcnt?"★ "+(p.rsum/p.rcnt).toFixed(1)+" ("+p.rcnt+")":"جديد"}
+async function rpc(n,a){var r=await sb.rpc(n,a||{});if(r.error){toast(r.error.message);return false}return true}
+async function url(b,p){var r=await sb.storage.from(b).createSignedUrl(p,3600);return r.data?r.data.signedUrl:""}
+
+async function load(){
+ var s=(await sb.auth.getSession()).data.session;U=s?s.user:null;
+ if(!U){ME=null;return draw()}
+ ME=(await sb.from("profiles").select("*").eq("id",U.id).single()).data;
+ await sb.rpc("relist_expired");
+ T=(await sb.from("tasks").select("*,bp:profiles!brand(name,rsum,rcnt),wp:profiles!worker(name,rsum,rcnt)").order("created",{ascending:false})).data||[];
+ for(var i=0;i<T.length;i++)if(T[i].video&&(T[i].status==="review"||T[i].status==="approved"))T[i].vu=await url("proofs",T[i].video);
+ N=(await sb.from("notes").select("*").order("created",{ascending:false}).limit(20)).data||[];
+ R={};((await sb.from("ratings").select("task").eq("frm",U.id)).data||[]).forEach(function(x){R[x.task]=1});
+ PI=[];
+ if(ME&&ME.role==="admin"){PI=(await sb.from("profiles").select("*").eq("idstat","pending")).data||[];
+  for(var j=0;j<PI.length;j++){PI[j].cu=await url("ids",PI[j].card);PI[j].su=await url("ids",PI[j].selfie)}}
+ draw();
+}
+function soft(){var a=document.activeElement.tagName;if(!REC&&a!=="INPUT"&&a!=="TEXTAREA"&&a!=="SELECT")load()}
+
+function authV(){var up=MODE==="up";
+ return '<h1>وقفة</h1><div class="card"><h3>'+(up?"حساب جديد":"دخول")+'</h3>'+
+ (up?'<label for="a-n">الاسم</label><input id="a-n"><label for="a-r">أنا</label><select id="a-r"><option value="worker">منفذ</option><option value="brand">براند</option></select>':'')+
+ '<label for="a-e">الإيميل</label><input id="a-e" type="email" autocomplete="email"><label for="a-p">كلمة السر (6 حروف على الأقل)</label><input id="a-p" type="password" autocomplete="current-password">'+
+ '<div class="row"><button class="btn" data-a="auth">'+(up?"إنشاء الحساب":"دخول")+'</button><button class="btn ghost" data-a="mode">'+(up?"عندي حساب":"حساب جديد")+'</button></div></div>'}
+function taskInfo(t){return '<div class="meta"><span>'+esc(t.place)+'</span><span>'+t.hours+' ساعات دعاية</span><span>مهلة التسليم '+t.mins+' دقيقة</span><span class="rew">'+t.amount+' جنيه</span>'+(t.relisted?'<span class="badge b-taken">أُعيد عرضها +10%</span>':'')+'</div>'}
+function rateBtns(t){if(R[t.id])return '<div class="hint">تم التقييم</div>';
+ var h='<div class="row"><span>قيّم الطرف التاني:</span>';for(var i=1;i<=5;i++)h+='<button class="btn ghost" data-a="rate" data-i="'+t.id+'" data-s="'+i+'">'+i+'★</button>';return h+'</div>'}
+
+function brandV(){
+ var h='<div class="card"><h3>مهمة جديدة</h3><label for="f-t">العنوان</label><input id="f-t"><label for="f-p">المكان</label><input id="f-p">'+
+ '<label for="f-h">ساعات الدعاية</label><input id="f-h" type="number" min="1" max="12" value="2"><label for="f-m">مهلة التسليم بعد الاستلام (دقيقة)</label><input id="f-m" type="number" min="2" value="60">'+
+ '<label for="f-a">المكافأة (جنيه)</label><input id="f-a" type="number" min="1"><label for="f-d">المطلوب من المنفذ</label><textarea id="f-d" rows="3"></textarea>'+
+ '<div class="row"><button class="btn" data-a="add">نشر المهمة</button></div></div><h2>مهامك</h2>';
+ var mine=T.filter(function(t){return t.brand===U.id});
+ if(!mine.length)h+='<div class="empty">لسه مفيش مهام.</div>';
+ mine.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><span class="badge b-'+t.status+'">'+ST[t.status]+'</span>'+taskInfo(t)+
+  (t.wp?'<div class="hint">المنفذ: '+esc(t.wp.name)+' '+stars(t.wp)+'</div>':'')+
+  (t.status==="approved"?'<video controls playsinline src="'+t.vu+'"></video>'+rateBtns(t):'')+'</div>'});
+ return h}
+
+function workerV(){
+ var h="",now=Date.now(),s=ME.idstat;
+ if(s==="ok")h+='<div class="hint">هويتك موثقة.</div>';
+ else if(s==="pending")h+='<div class="card">هويتك تحت المراجعة. هيجيلك إشعار لما تتوثق.</div>';
+ else h+='<div class="card"><h3>وثّق هويتك الأول</h3>'+(s==="rejected"?'<div class="note">اترفضت الصور، ارفع صور أوضح.</div>':'')+
+  '<label for="i-c">صورة البطاقة</label><input type="file" id="i-c" accept="image/*"><label for="i-s">سيلفي وانت ماسك البطاقة</label><input type="file" id="i-s" accept="image/*" capture="user">'+
+  '<div class="row"><button class="btn" data-a="idsend">إرسال للتوثيق</button></div></div>';
+ if(REC)h+='<div class="card" style="border:2px solid var(--bad)"><h3>التصوير شغال <span id="rt">0:00</span></h3><video id="live" muted playsinline autoplay></video><div class="hint">صوّر نفسك والمكان واللافتة. الموقع والوقت بيتسجلوا مع الفيديو. 10 ثواني على الأقل.</div><div class="row"><button class="btn bad" data-a="recstop">إيقاف وإرسال</button></div></div>';
+ if(OFFER){var o=T.filter(function(t){return t.id===OFFER.id})[0];if(o)h+='<div class="card" style="border:2px solid var(--pri)"><h3>'+esc(o.title)+'</h3>'+taskInfo(o)+'<div>'+esc(o.descr)+'</div><div class="hint">البراند: '+esc(o.bp?o.bp.name:"")+' '+stars(o.bp)+'. العرض بينتهي بعد <b id="oc">'+Math.ceil((OFFER.end-now)/1000)+'</b> ثواني. بعد الاستلام عندك دقيقة إلغاء مجاني.</div><div class="row"><button class="btn" data-a="acc" data-i="'+o.id+'">أستلم</button><button class="btn ghost" data-a="dec">مش مناسبة</button></div></div>'}
+ var open=T.filter(function(t){return t.status==="open"}),mine=T.filter(function(t){return t.worker===U.id});
+ h+='<h2>مهام متاحة</h2>';
+ if(!open.length)h+='<div class="empty">مفيش مهام متاحة دلوقتي.</div>';
+ open.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3>'+taskInfo(t)+'<div class="hint">البراند: '+esc(t.bp?t.bp.name:"")+' '+stars(t.bp)+'</div><div class="row"><button class="btn" data-a="offer" data-i="'+t.id+'">شوف العرض</button></div></div>'});
+ h+='<h2>مهامي</h2>';
+ if(!mine.length)h+='<div class="empty">استلم مهمة وهتظهر هنا.</div>';
+ mine.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><span class="badge b-'+t.status+'">'+ST[t.status]+'</span>'+taskInfo(t);
+  if(t.note)h+='<div class="note">ملاحظة المراجع: '+esc(t.note)+'</div>';
+  if(t.status==="taken"){h+='<div class="hint">باقي على التسليم: <b data-dl="'+Date.parse(t.deadline)+'">'+mmss(Date.parse(t.deadline)-now)+'</b>. لو خلصت المهلة بتتعرض على منفذ تاني بزيادة 10%.</div><div class="row">';
+   if(Date.parse(t.grace)>now)h+='<button class="btn ghost" data-a="cancel" data-i="'+t.id+'" data-g="'+Date.parse(t.grace)+'">إلغاء مجاني (أول دقيقة)</button>';
+   h+='<button class="btn" data-a="rec" data-i="'+t.id+'">ابدأ التصوير</button></div>'}
+  if(t.status==="review")h+='<div class="hint">الفيديو في انتظار المراجعة.</div>';
+  if(t.status==="approved")h+='<div class="hint">المكافأة مستحقة: '+t.amount+' جنيه</div>'+rateBtns(t);
+  h+='</div>'});
+ return h}
+
+function adminV(){
+ var h='<h2>طلبات توثيق الهوية</h2>';
+ if(!PI.length)h+='<div class="empty">مفيش طلبات.</div>';
+ PI.forEach(function(p){h+='<div class="card"><h3>'+esc(p.name)+'</h3><img alt="البطاقة" src="'+p.cu+'"><img alt="السيلفي" src="'+p.su+'"><div class="row"><button class="btn ok" data-a="idok" data-i="'+p.id+'">توثيق</button><button class="btn bad" data-a="idno" data-i="'+p.id+'">رفض</button></div></div>'});
+ h+='<h2>فيديوهات للمراجعة</h2>';
+ var rv=T.filter(function(t){return t.status==="review"});
+ if(!rv.length)h+='<div class="empty">مفيش فيديوهات.</div>';
+ rv.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3>'+taskInfo(t)+'<video controls playsinline src="'+t.vu+'"></video><div class="meta"><span>الوقت: '+new Date(t.shot).toLocaleString("ar-EG")+'</span><a href="https://maps.google.com/?q='+t.lat+','+t.lng+'" target="_blank" rel="noopener">الموقع على الخريطة</a><span>المنفذ: '+esc(t.wp?t.wp.name:"")+'</span></div><label for="n-'+t.id+'">سبب الرفض</label><input id="n-'+t.id+'"><div class="row"><button class="btn ok" data-a="ok" data-i="'+t.id+'">قبول</button><button class="btn bad" data-a="no" data-i="'+t.id+'">رفض وإعادة</button></div></div>'});
+ return h}
+
+function draw(){
+ var el=$("app");
+ if(!U||!ME){el.innerHTML=authV();return}
+ var un=N.filter(function(n){return!n.seen}).length,rn={brand:"براند",worker:"منفذ",admin:"أدمن"};
+ var h='<div class="top"><b>'+esc(ME.name)+'</b><span class="badge">'+rn[ME.role]+'</span><span>'+stars(ME)+'</span><span class="sp"></span><button class="btn ghost" data-a="bell" aria-label="الإشعارات">🔔 '+un+'</button><button class="btn ghost" data-a="out">خروج</button></div>';
+ if(BELL){h+='<div class="card">';if(!N.length)h+='<div class="hint">مفيش إشعارات.</div>';N.forEach(function(n){h+='<div class="hint" style="color:var(--ink)">'+esc(n.txt)+'</div>'});h+='</div>'}
+ h+=ME.role==="brand"?brandV():ME.role==="admin"?adminV():workerV();
+ el.innerHTML=h;
+ if(REC&&$("live")){$("live").srcObject=REC.st;$("live").play()}
+}
+
+async function recStart(id){
+ var pos,st;
+ try{pos=await new Promise(function(y,n){navigator.geolocation.getCurrentPosition(y,n,{enableHighAccuracy:true,timeout:15000})})}catch(x){toast("فعّل الموقع عشان نثبت مكانك");return}
+ try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:true})}catch(x){toast("اسمح بالكاميرا والمايك");return}
+ var mt=MediaRecorder.isTypeSupported("video/webm")?"video/webm":"video/mp4",mr=new MediaRecorder(st,{mimeType:mt}),ch=[];
+ mr.ondataavailable=function(e){if(e.data.size)ch.push(e.data)};
+ REC={id:id,st:st,mr:mr,ch:ch,pos:pos,mt:mt,t0:Date.now()};mr.start(1000);draw();
+}
+function recStop(){
+ var X=REC;if(Date.now()-X.t0<10000){toast("الفيديو لازم يكون 10 ثواني على الأقل");return}
+ X.mr.onstop=async function(){
+  X.st.getTracks().forEach(function(t){t.stop()});
+  var blob=new Blob(X.ch,{type:X.mt}),path=U.id+"/"+X.id+"-"+Date.now()+(X.mt==="video/webm"?".webm":".mp4");
+  toast("جاري الرفع...");
+  var u=await sb.storage.from("proofs").upload(path,blob,{contentType:X.mt});
+  REC=null;
+  if(u.error){toast(u.error.message);load();return}
+  if(await rpc("submit_proof",{t:X.id,v:path,la:X.pos.coords.latitude,lo:X.pos.coords.longitude}))toast("اتبعت للمراجعة");
+  load()};
+ X.mr.stop();
+}
+
+document.addEventListener("click",async function(e){
+ var b=e.target.closest("[data-a]");if(!b)return;
+ var a=b.dataset.a,i=+b.dataset.i,v=function(k){return $(k).value.trim()};
+ if(a==="mode"){MODE=MODE==="in"?"up":"in";draw()}
+ else if(a==="auth"){var em=v("a-e"),pw=$("a-p").value,r=MODE==="in"?await sb.auth.signInWithPassword({email:em,password:pw}):await sb.auth.signUp({email:em,password:pw,options:{data:{name:v("a-n"),role:$("a-r").value}}});
+  if(r.error)toast(r.error.message);else if(!r.data.session)toast("أكّد الإيميل من الرسالة اللي وصلتك وبعدين ادخل")}
+ else if(a==="out"){await sb.auth.signOut()}
+ else if(a==="bell"){BELL=!BELL;draw();if(BELL){await sb.from("notes").update({seen:true}).eq("seen",false);N.forEach(function(n){n.seen=true})}}
+ else if(a==="add"){var am=+v("f-a");if(!v("f-t")||!v("f-p")||!am){toast("كمّل العنوان والمكان والمكافأة");return}
+  var q=await sb.from("tasks").insert({brand:U.id,title:v("f-t"),place:v("f-p"),hours:+v("f-h")||1,mins:+v("f-m")||60,amount:am,descr:v("f-d")});
+  if(q.error)toast(q.error.message);else{toast("تم نشر المهمة");load()}}
+ else if(a==="idsend"){var c=$("i-c").files[0],s=$("i-s").files[0];if(!c||!s){toast("ارفع صورة البطاقة والسيلفي");return}
+  var p1=U.id+"/card-"+Date.now(),p2=U.id+"/self-"+Date.now();
+  var u1=await sb.storage.from("ids").upload(p1,c),u2=await sb.storage.from("ids").upload(p2,s);
+  if(u1.error||u2.error){toast("فشل الرفع");return}
+  if(await rpc("submit_id",{c:p1,s:p2})){toast("اتبعت للتوثيق");load()}}
+ else if(a==="offer"){if(ME.idstat!=="ok"){toast("وثّق هويتك الأول");return}OFFER={id:i,end:Date.now()+10000};draw();window.scrollTo(0,0)}
+ else if(a==="dec"){OFFER=null;draw()}
+ else if(a==="acc"){OFFER=null;if(await rpc("accept_task",{t:i}))toast("استلمت المهمة");load()}
+ else if(a==="cancel"){if(await rpc("cancel_task",{t:i}))toast("اتلغت من غير عقوبة");load()}
+ else if(a==="rec"){recStart(i)}
+ else if(a==="recstop"){recStop()}
+ else if(a==="rate"){if(await rpc("rate",{t:i,s:+b.dataset.s}))toast("شكراً على التقييم");load()}
+ else if(a==="idok"||a==="idno"){if(await rpc("review_id",{u:b.dataset.i,ok:a==="idok"}))load()}
+ else if(a==="ok"||a==="no"){var nt=a==="no"?v("n-"+i):"";if(a==="no"&&!nt){toast("اكتب سبب الرفض");return}
+  if(await rpc("review_task",{t:i,ok:a==="ok",n:nt}))load()}
+});
+sb.auth.onAuthStateChange(function(){setTimeout(load,0)});
+sb.channel("live").on("postgres_changes",{event:"INSERT",schema:"public",table:"notes"},function(p){if(U&&p.new.usr===U.id){toast(p.new.txt);soft()}})
+ .on("postgres_changes",{event:"*",schema:"public",table:"tasks"},function(){soft()}).subscribe();
+setInterval(function(){
+ var now=Date.now(),i,x;tick++;
+ if(OFFER&&now>=OFFER.end){OFFER=null;toast("العرض انتهى");draw()}
+ x=$("oc");if(x&&OFFER)x.textContent=Math.ceil((OFFER.end-now)/1000);
+ x=$("rt");if(x&&REC)x.textContent=mmss(now-REC.t0).replace(/^/,"");
+ x=document.querySelectorAll("[data-dl]");for(i=0;i<x.length;i++)x[i].textContent=mmss(+x[i].dataset.dl-now);
+ x=document.querySelectorAll("[data-g]");for(i=0;i<x.length;i++)if(now>+x[i].dataset.g)x[i].hidden=true;
+ if(tick%30===0&&U)soft();
+},1000);
+</script>
+</body>
+</html>
