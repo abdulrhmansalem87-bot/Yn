@@ -39,14 +39,15 @@ video,img{width:100%;max-height:260px;object-fit:contain;border-radius:10px;back
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 var SB_URL="https://fonczgmjnjbgxyhhdpvi.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvbmN6Z21qbmpiZ3h5aGhkcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjQzNDAsImV4cCI6MjEwODYwMDM0MH0.s5jqDYr2yWEUnkTDwmxFNWwy5O7KSaNicAYrANNEmDs";
-var sb=supabase.createClient(SB_URL,SB_KEY),U=null,ME=null,T=[],N=[],PI=[],R={},OFFER=null,REC=null,BELL=false,MODE="in",tick=0;
+var sb=supabase.createClient(SB_URL,SB_KEY),U=null,ME=null,T=[],N=[],PI=[],R={},OFFER=null,REC=null,BELL=false,MODE="in",tick=0,IDF={};
 var $=function(i){return document.getElementById(i)};
 var ST={open:"متاحة",taken:"قيد التنفيذ",review:"تحت المراجعة",approved:"تمت الموافقة"};
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function toast(t){var e=$("toast");e.textContent=t;e.classList.add("show");setTimeout(function(){e.classList.remove("show")},2600)}
 function mmss(ms){var s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
 function stars(p){return p&&p.rcnt?"★ "+(p.rsum/p.rcnt).toFixed(1)+" ("+p.rcnt+")":"جديد"}
-async function rpc(n,a){var r=await sb.rpc(n,a||{});if(r.error){toast(r.error.message);return false}return true}
+function ar(m){m=String(m||"");var k=[["Invalid login","الإيميل أو الباسورد غلط"],["already registered","الإيميل ده مسجل قبل كده، ادخل بيه"],["at least","الباسورد قصير، 6 حروف على الأقل"],["valid email","اكتب إيميل صحيح"],["rate limit","محاولات كتير، جرّب بعد شوية"],["Failed to fetch","مفيش اتصال بالنت"],["row-level security","مش مسموح لك بالعملية دي"]];for(var i=0;i<k.length;i++)if(m.indexOf(k[i][0])>-1)return k[i][1];return m}
+async function rpc(n,a){var r=await sb.rpc(n,a||{});if(r.error){toast(ar(r.error.message));return false}return true}
 async function url(b,p){var r=await sb.storage.from(b).createSignedUrl(p,3600);return r.data?r.data.signedUrl:""}
 
 async function load(){
@@ -63,7 +64,7 @@ async function load(){
   for(var j=0;j<PI.length;j++){PI[j].cu=await url("ids",PI[j].card);PI[j].su=await url("ids",PI[j].selfie)}}
  draw();
 }
-function soft(){var a=document.activeElement.tagName;if(!REC&&a!=="INPUT"&&a!=="TEXTAREA"&&a!=="SELECT")load()}
+function soft(){var a=document.activeElement.tagName;if(!REC&&!IDF.c&&!IDF.s&&a!=="INPUT"&&a!=="TEXTAREA"&&a!=="SELECT")load()}
 
 function authV(){var up=MODE==="up";
  return '<h1>وقفة</h1><div class="card"><h3>'+(up?"حساب جديد":"دخول")+'</h3>'+
@@ -91,7 +92,7 @@ function workerV(){
  if(s==="ok")h+='<div class="hint">هويتك موثقة.</div>';
  else if(s==="pending")h+='<div class="card">هويتك تحت المراجعة. هيجيلك إشعار لما تتوثق.</div>';
  else h+='<div class="card"><h3>وثّق هويتك الأول</h3>'+(s==="rejected"?'<div class="note">اترفضت الصور، ارفع صور أوضح.</div>':'')+
-  '<label for="i-c">صورة البطاقة</label><input type="file" id="i-c" accept="image/*"><label for="i-s">سيلفي وانت ماسك البطاقة</label><input type="file" id="i-s" accept="image/*" capture="user">'+
+  '<label for="i-c">صورة البطاقة</label><input type="file" id="i-c" accept="image/*">'+(IDF.c?'<div class="hint">✓ تم اختيار الصورة: '+esc(IDF.c.name)+'</div>':'')+'<label for="i-s">سيلفي وانت ماسك البطاقة</label><input type="file" id="i-s" accept="image/*" capture="user">'+(IDF.s?'<div class="hint">✓ تم اختيار الصورة: '+esc(IDF.s.name)+'</div>':'')+
   '<div class="row"><button class="btn" data-a="idsend">إرسال للتوثيق</button></div></div>';
  if(REC)h+='<div class="card" style="border:2px solid var(--bad)"><h3>التصوير شغال <span id="rt">0:00</span></h3><video id="live" muted playsinline autoplay></video><div class="hint">صوّر نفسك والمكان واللافتة. الموقع والوقت بيتسجلوا مع الفيديو. 10 ثواني على الأقل.</div><div class="row"><button class="btn bad" data-a="recstop">إيقاف وإرسال</button></div></div>';
  if(OFFER){var o=T.filter(function(t){return t.id===OFFER.id})[0];if(o)h+='<div class="card" style="border:2px solid var(--pri)"><h3>'+esc(o.title)+'</h3>'+taskInfo(o)+'<div>'+esc(o.descr)+'</div><div class="hint">البراند: '+esc(o.bp?o.bp.name:"")+' '+stars(o.bp)+'. العرض بينتهي بعد <b id="oc">'+Math.ceil((OFFER.end-now)/1000)+'</b> ثواني. بعد الاستلام عندك دقيقة إلغاء مجاني.</div><div class="row"><button class="btn" data-a="acc" data-i="'+o.id+'">أستلم</button><button class="btn ghost" data-a="dec">مش مناسبة</button></div></div>'}
@@ -159,17 +160,17 @@ document.addEventListener("click",async function(e){
  var a=b.dataset.a,i=+b.dataset.i,v=function(k){return $(k).value.trim()};
  if(a==="mode"){MODE=MODE==="in"?"up":"in";draw()}
  else if(a==="auth"){var em=v("a-e"),pw=$("a-p").value,r=MODE==="in"?await sb.auth.signInWithPassword({email:em,password:pw}):await sb.auth.signUp({email:em,password:pw,options:{data:{name:v("a-n"),role:$("a-r").value}}});
-  if(r.error)toast(r.error.message);else if(!r.data.session)toast("أكّد الإيميل من الرسالة اللي وصلتك وبعدين ادخل")}
+  if(r.error)toast(ar(r.error.message));else if(MODE==="up"&&r.data.user&&r.data.user.identities&&!r.data.user.identities.length){toast("الإيميل ده مسجل قبل كده، ادخل بيه");MODE="in";draw()}else if(!r.data.session)toast("أكّد الإيميل من الرسالة اللي وصلتك وبعدين ادخل")}
  else if(a==="out"){await sb.auth.signOut()}
  else if(a==="bell"){BELL=!BELL;draw();if(BELL){await sb.from("notes").update({seen:true}).eq("seen",false);N.forEach(function(n){n.seen=true})}}
  else if(a==="add"){var am=+v("f-a");if(!v("f-t")||!v("f-p")||!am){toast("كمّل العنوان والمكان والمكافأة");return}
   var q=await sb.from("tasks").insert({brand:U.id,title:v("f-t"),place:v("f-p"),hours:+v("f-h")||1,mins:+v("f-m")||60,amount:am,descr:v("f-d")});
-  if(q.error)toast(q.error.message);else{toast("تم نشر المهمة");load()}}
- else if(a==="idsend"){var c=$("i-c").files[0],s=$("i-s").files[0];if(!c||!s){toast("ارفع صورة البطاقة والسيلفي");return}
+  if(q.error)toast(ar(q.error.message));else{toast("تم نشر المهمة");load()}}
+ else if(a==="idsend"){var c=IDF.c,s=IDF.s;if(!c||!s){toast("ارفع صورة البطاقة والسيلفي");return}
   var p1=U.id+"/card-"+Date.now(),p2=U.id+"/self-"+Date.now();
   var u1=await sb.storage.from("ids").upload(p1,c),u2=await sb.storage.from("ids").upload(p2,s);
   if(u1.error||u2.error){toast("فشل الرفع");return}
-  if(await rpc("submit_id",{c:p1,s:p2})){toast("اتبعت للتوثيق");load()}}
+  if(await rpc("submit_id",{c:p1,s:p2})){IDF={};toast("اتبعت للتوثيق");load()}}
  else if(a==="offer"){if(ME.idstat!=="ok"){toast("وثّق هويتك الأول");return}OFFER={id:i,end:Date.now()+10000};draw();window.scrollTo(0,0)}
  else if(a==="dec"){OFFER=null;draw()}
  else if(a==="acc"){OFFER=null;if(await rpc("accept_task",{t:i}))toast("استلمت المهمة");load()}
@@ -181,7 +182,8 @@ document.addEventListener("click",async function(e){
  else if(a==="ok"||a==="no"){var nt=a==="no"?v("n-"+i):"";if(a==="no"&&!nt){toast("اكتب سبب الرفض");return}
   if(await rpc("review_task",{t:i,ok:a==="ok",n:nt}))load()}
 });
-sb.auth.onAuthStateChange(function(){setTimeout(load,0)});
+document.addEventListener("change",function(e){var t=e.target;if(t.id==="i-c"||t.id==="i-s"){IDF[t.id==="i-c"?"c":"s"]=t.files[0]||null;draw()}});
+sb.auth.onAuthStateChange(function(ev,se){var id=se&&se.user?se.user.id:null;if(ev==="INITIAL_SESSION"||ev==="SIGNED_OUT"||id!==(U&&U.id))setTimeout(load,0)});
 sb.channel("live").on("postgres_changes",{event:"INSERT",schema:"public",table:"notes"},function(p){if(U&&p.new.usr===U.id){toast(p.new.txt);soft()}})
  .on("postgres_changes",{event:"*",schema:"public",table:"tasks"},function(){soft()}).subscribe();
 setInterval(function(){
