@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تحميل وقفة</title>
+<style>
+body{margin:0;font-family:system-ui,sans-serif;background:#eef2f6;color:#16252b;line-height:1.7}
+main{max-width:520px;margin:0 auto;padding:28px 18px}
+h1{font-size:30px;margin:0 0 4px}
+.btn{display:block;text-align:center;background:#0f5c5c;color:#fff;text-decoration:none;font-weight:700;font-size:18px;padding:14px;border-radius:12px;margin:18px 0}
+li{margin-bottom:8px}.hint{color:#5d6f78;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>وقفة</h1>
+<div class="hint">تطبيق أندرويد</div>
+<a id="dl" class="btn" href="#">تحميل التطبيق (APK)</a>
+<ol>
+<li>نزّل الملف وافتحه.</li>
+<li>لو ظهر "السماح بالتثبيت من هذا المصدر" فعّله.</li>
+<li>لو ظهر تحذير Play Protect اختار "تثبيت على أي حال".</li>
+<li>لو ظهر إن التطبيق مش بيتثبت فوق نسخة قديمة، امسح النسخة القديمة وثبّت تاني.</li>
+</ol>
+<div class="hint" id="msg"></div>
+</main>
+<script>
+// لو الصفحة مش على github.io اكتب هنا: "اسم-المستخدم/اسم-الريبو"
+var REPO="";
+var h=location.hostname,p=location.pathname.split("/").filter(Boolean);
+if(!REPO&&/\.github\.io$/.test(h)){var o=h.split(".")[0];REPO=o+"/"+(p.length&&!/\.html?$/.test(p[0])?p[0]:o+".github.io")}
+if(REPO)document.getElementById("dl").href="https://github.com/"+REPO+"/releases/latest/download/waqfa.apk";
+else document.getElementById("msg").textContent="عدّل المتغير REPO في الملف ده (اسم-المستخدم/اسم-الريبو).";
+</script>
+</body>
+</html>
