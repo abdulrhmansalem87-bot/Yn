@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>وقفة</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#eef2f6;--card:#fff;--ink:#16252b;--mute:#5d6f78;--line:#d5dee5;--pri:#0f5c5c;--on:#fff;--amb:#b97a00;--ambbg:#fff3d6;--ok:#1d7a46;--okbg:#dff3e7;--bad:#b3322b;--blu:#1f5fa8;--blubg:#e1ecf8}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1a1f;--card:#18262c;--ink:#e8f0f3;--mute:#93a6af;--line:#2b3d45;--pri:#4fc3c3;--on:#0b1a1a;--amb:#f0b840;--ambbg:#3a2f12;--ok:#5fd18d;--okbg:#14301f;--bad:#ff8a82;--blu:#7db4f0;--blubg:#16293f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Cairo,system-ui,sans-serif;line-height:1.6}
+main{max-width:640px;margin:0 auto;padding:16px 16px 60px}
+h1{font-size:26px;font-weight:800;margin:8px 0}
+h2{font-size:17px;margin:18px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 4px;font-size:17px}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--mute);font-size:14px;margin:4px 0 8px}
+.badge{display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;background:var(--blubg);color:var(--blu)}
+.b-taken,.b-review,.b-unpaid{background:var(--ambbg);color:var(--amb)}.b-approved{background:var(--okbg);color:var(--ok)}.b-cancelled{background:var(--line);color:var(--mute)}.rd{color:var(--bad);font-weight:700}
+.rew{font-weight:800;color:var(--pri)}
+label{display:block;font-weight:600;font-size:14px;margin:10px 0 4px}
+input,select,textarea{width:100%;font:400 16px Cairo,sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blu);outline-offset:2px}
+.btn{border:0;border-radius:10px;padding:9px 14px;font:600 15px Cairo,sans-serif;cursor:pointer;background:var(--pri);color:var(--on)}
+.ghost{background:none;border:1px solid var(--line);color:var(--ink)}.ok{background:var(--ok);color:#fff}.bad{background:var(--bad);color:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.top .sp{flex:1}
+video,img{width:100%;max-height:260px;object-fit:contain;border-radius:10px;background:#000;margin-top:8px}
+.hint{font-size:13px;color:var(--mute);margin-top:6px}.empty{text-align:center;color:var(--mute);padding:24px;border:1px dashed var(--line);border-radius:14px}
+.note{font-size:14px;padding:8px 10px;border-radius:10px;background:var(--ambbg);color:var(--amb);margin-top:8px}
+.toast{position:fixed;inset-inline:16px;bottom:16px;max-width:420px;margin:auto;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;text-align:center;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="toast" id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var SB_URL="https://fonczgmjnjbgxyhhdpvi.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvbmN6Z21qbmpiZ3h5aGhkcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjQzNDAsImV4cCI6MjEwODYwMDM0MH0.s5jqDYr2yWEUnkTDwmxFNWwy5O7KSaNicAYrANNEmDs";
+var sb=supabase.createClient(SB_URL,SB_KEY),U=null,ME=null,T=[],N=[],PI=[],R={},OFFER=null,REC=null,BELL=false,MODE="in",tick=0,IDF={},PF={},S={commission_pct:"15",pay_info:""},MP="",PO={},CS={},WATCH=null,CH=[],PL={i:0},NOKEEP=false,TERMS=false,SEGMS=30000;
+var $=function(i){return document.getElementById(i)};
+var ST={unpaid:"في انتظار الدفع",open:"متاحة",taken:"قيد التنفيذ",review:"تحت المراجعة",approved:"تمت الموافقة",cancelled:"ملغية"};
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function toast(t){var e=$("toast");e.textContent=t;e.classList.add("show");setTimeout(function(){e.classList.remove("show")},2800)}
+function mmss(ms){var s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
+function hms(s){s=Math.max(0,Math.round(s));return Math.floor(s/3600)+":"+("0"+Math.floor(s%3600/60)).slice(-2)+":"+("0"+s%60).slice(-2)}
+function stars(p){return p&&p.rcnt?"★ "+(p.rsum/p.rcnt).toFixed(1)+" ("+p.rcnt+")":"جديد"}
+function ar(m){m=String(m||"");var k=[["Invalid login","الإيميل أو الباسورد غلط"],["already registered","الإيميل ده مسجل قبل كده، ادخل بيه"],["at least","الباسورد قصير، 6 حروف على الأقل"],["valid email","اكتب إيميل صحيح"],["rate limit","محاولات كتير، جرّب بعد شوية"],["Failed to fetch","مفيش اتصال بالنت"],["row-level security","مش مسموح لك بالعملية دي"],["exceeded the maximum","الملف كبير أوي"],["mime type","نوع الملف مش مدعوم"]];for(var i=0;i<k.length;i++)if(m.indexOf(k[i][0])>-1)return k[i][1];return m}
+async function rpc(n,a){var r=await sb.rpc(n,a||{});if(r.error){toast(ar(r.error.message));return false}return true}
+async function url(b,p){var r=await sb.storage.from(b).createSignedUrl(p,3600);return r.data?r.data.signedUrl:""}
+function pct(){return parseFloat(S.commission_pct)||0}
+function wnet(t){var p=t.paid_amount||t.amount,f=Math.round(p*pct()/100);return Math.min(t.amount-f,p)}
+function dist(a,b){var E=6371000,r=Math.PI/180,x=(b.lat-a.lat)*r,y=(b.lng-a.lng)*r,h=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(y/2)*Math.sin(y/2);return 2*E*Math.asin(Math.sqrt(h))}
+function keep(){var m={};document.querySelectorAll("#app input[id],#app textarea[id],#app select[id]").forEach(function(e){if(e.type==="checkbox")m[e.id]=e.checked;else if(e.type!=="file")m[e.id]=e.value});return m}
+function restore(m){for(var k in m){var e=$(k);if(e&&e.type==="checkbox")e.checked=m[k];else if(e&&e.type!=="file")e.value=m[k]}}
+
+async function load(){
+ var s=(await sb.auth.getSession()).data.session;U=s?s.user:null;
+ if(!U){ME=null;WATCH=null;return draw()}
+ ME=(await sb.from("profiles").select("*").eq("id",U.id).single()).data;
+ await sb.rpc("relist_expired");
+ ((await sb.from("app_settings").select("*")).data||[]).forEach(function(x){S[x.k]=x.v});
+ T=(await sb.from("tasks").select("*,bp:profiles!brand(name,rsum,rcnt),wp:profiles!worker(name,rsum,rcnt)").order("created",{ascending:false})).data||[];
+ N=(await sb.from("notes").select("*").order("created",{ascending:false}).limit(20)).data||[];
+ R={};((await sb.from("ratings").select("task").eq("frm",U.id)).data||[]).forEach(function(x){R[x.task]=1});
+ PI=[];PO={};MP="";CS={};
+ if(ME&&ME.role==="worker"){
+  var po=(await sb.from("payouts").select("info").eq("usr",U.id)).data;MP=po&&po[0]?po[0].info:"";
+  var ids=T.filter(function(t){return t.worker===U.id&&t.status==="taken"}).map(function(t){return t.id});
+  if(ids.length)((await sb.from("chunks").select("task,dur").in("task",ids).eq("void",false)).data||[]).forEach(function(c){CS[c.task]=(CS[c.task]||0)+c.dur})}
+ if(ME&&ME.role==="admin"){
+  PI=(await sb.from("profiles").select("*").eq("idstat","pending")).data||[];
+  for(var j=0;j<PI.length;j++){PI[j].cu=await url("ids",PI[j].card);PI[j].su=await url("ids",PI[j].selfie)}
+  ((await sb.from("payouts").select("*")).data||[]).forEach(function(p){PO[p.usr]=p.info});
+  for(var i=0;i<T.length;i++)if(T[i].status==="unpaid"&&T[i].pay==="proof"&&T[i].pay_proof)T[i].pu=await url("pay",T[i].pay_proof)}
+ draw();
+}
+function soft(){var a=document.activeElement.tagName;if(!REC&&!WATCH&&!IDF.c&&!IDF.s&&!Object.keys(PF).length&&a!=="INPUT"&&a!=="TEXTAREA"&&a!=="SELECT")load()}
+
+function termsHtml(){return '<div class="note" style="background:var(--blubg);color:var(--ink)"><b>الشروط وسياسة الخصوصية</b><br>• وقفة منصة بتوصّل البراندز بمنفذين لمهام الدعاية.<br>• صورة البطاقة والسيلفي بتُستخدم للتحقق من الهوية بس، ومش بتتعرض للبراندز، ومحفوظة بشكل خاص.<br>• أثناء المهمة بيتسجّل فيديو من الكاميرا ومعاه الوقت والموقع، ويشوفه البراند صاحب المهمة والإدارة.<br>• المبلغ بيتحجز لحد ما المهمة تتنفذ، وبيتحوّل للمنفذ بعد قبول التسجيل ناقص عمولة المنصة.<br>• التلاعب في التسجيل أو التصوير في غير المكان المطلوب ممكن يخلّي المهمة تترفض.<br>• تقدر تطلب مسح بياناتك بالتواصل مع الإدارة.</div>'}
+function authV(){var up=MODE==="up";
+ return '<h1>وقفة</h1><div class="card"><h3>'+(up?"حساب جديد":"دخول")+'</h3>'+
+ (up?'<label for="a-n">الاسم</label><input id="a-n"><label for="a-r">أنا</label><select id="a-r"><option value="worker">منفذ</option><option value="brand">براند</option></select>':'')+
+ '<label for="a-e">الإيميل</label><input id="a-e" type="email" autocomplete="email"><label for="a-p">كلمة السر (6 حروف على الأقل)</label><input id="a-p" type="password" autocomplete="current-password">'+
+ (up?'<label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" id="a-c" style="width:auto;margin-top:6px"><span>أوافق على الشروط وسياسة الخصوصية، وإن الكاميرا والموقع يتسجلوا أثناء تنفيذ المهام.</span></label><div class="row"><button class="btn ghost" data-a="terms">اقرأ الشروط</button></div>'+(TERMS?termsHtml():''):'')+'<div class="row"><button class="btn" data-a="auth">'+(up?"إنشاء الحساب":"دخول")+'</button><button class="btn ghost" data-a="mode">'+(up?"عندي حساب":"حساب جديد")+'</button></div></div>'}
+function taskInfo(t,w){return '<div class="meta"><span>'+esc(t.place)+'</span><span>'+t.hours+' ساعات دعاية</span><span>مهلة التسليم '+t.mins+' دقيقة</span><span class="rew">'+(w?'تاخد '+wnet(t)+' جنيه':t.amount+' جنيه')+'</span>'+(t.relisted?'<span class="badge b-taken">أُعيد عرضها +10%</span>':'')+'</div>'}
+function payBrand(t){
+ if(t.status==="unpaid"){
+  if(t.pay==="proof")return '<div class="note">تحويلك قيد التأكيد من الإدارة. المهمة هتظهر للمنفذين أول ما يتأكد.</div>';
+  var h='<div class="note">المهمة لسه مش معروضة. حوّل <b>'+t.amount+' جنيه</b> على:<br><b>'+esc(S.pay_info||"(الإدارة لسه ما حطتش بيانات التحويل)")+'</b><br>وبعدين ارفع صورة التحويل.</div>';
+  if(t.pay_note)h+='<div class="note">ملاحظة الإدارة: '+esc(t.pay_note)+'</div>';
+  return h+'<label for="p-'+t.id+'">صورة التحويل</label><input type="file" id="p-'+t.id+'" accept="image/*">'+(PF[t.id]?'<div class="hint">✓ تم اختيار الصورة: '+esc(PF[t.id].name)+'</div>':'')+'<div class="row"><button class="btn" data-a="payup" data-i="'+t.id+'">إرسال صورة التحويل</button><button class="btn ghost" data-a="bcancel" data-i="'+t.id+'">إلغاء المهمة</button></div>'}
+ if(t.pay==="held")return '<div class="hint">فلوسك محجوزة عند وقفة لحد ما المهمة تتنفذ وتتراجع.</div>'+(t.status==="open"?'<div class="row"><button class="btn ghost" data-a="bcancel" data-i="'+t.id+'">إلغاء واسترجاع الفلوس</button></div>':'');
+ if(t.pay==="due"||t.pay==="paid")return '<div class="hint">تم التنفيذ. المنفذ بيستلم '+t.net+' جنيه (عمولة وقفة '+t.fee+').</div>';
+ if(t.pay==="refund")return '<div class="note">اتلغت. هنرجّعلك '+t.paid_amount+' جنيه.</div>';
+ if(t.pay==="refunded")return '<div class="hint">تم رد فلوسك.</div>';
+ return ''}
+function rateBtns(t){if(R[t.id])return '<div class="hint">تم التقييم</div>';
+ var h='<div class="row"><span>قيّم الطرف التاني:</span>';for(var i=1;i<=5;i++)h+='<button class="btn ghost" data-a="rate" data-i="'+t.id+'" data-s="'+i+'">'+i+'★</button>';return h+'</div>'}
+
+function brandV(){
+ var h='<div class="card"><h3>مهمة جديدة</h3><label for="f-t">العنوان</label><input id="f-t"><label for="f-p">المكان</label><input id="f-p">'+
+ '<label for="f-h">ساعات الدعاية (من 1 لـ 8)</label><input id="f-h" type="number" min="1" max="8" value="2"><label for="f-m">مهلة التسليم بعد الاستلام (دقيقة، ساعات الدعاية + 15 دقيقة على الأقل)</label><input id="f-m" type="number" min="16" value="180">'+
+ '<label for="f-a">المبلغ اللي هتدفعه (جنيه)</label><input id="f-a" type="number" min="1"><label for="f-d">المطلوب من المنفذ</label><textarea id="f-d" rows="3"></textarea>'+
+ '<div class="hint">بعد النشر هتحوّل المبلغ وترفع صورة التحويل. المهمة بتظهر للمنفذين أول ما الإدارة تأكد استلام الفلوس.</div><div class="row"><button class="btn" data-a="add">نشر المهمة</button></div></div><h2>مهامك</h2>';
+ var mine=T.filter(function(t){return t.brand===U.id});
+ if(!mine.length)h+='<div class="empty">لسه مفيش مهام.</div>';
+ mine.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><span class="badge b-'+t.status+'">'+ST[t.status]+'</span>'+taskInfo(t)+
+  (t.wp?'<div class="hint">المنفذ: '+esc(t.wp.name)+' '+stars(t.wp)+'</div>':'')+payBrand(t)+
+  (t.status==="taken"||t.status==="review"||t.status==="approved"?'<div class="row"><button class="btn ghost" data-a="watch" data-i="'+t.id+'">👁 متابعة الدوام</button></div>':'')+
+  (t.status==="approved"?rateBtns(t):'')+'</div>'});
+ return h}
+
+function workerV(){
+ var h="",now=Date.now(),s=ME.idstat;
+ if(s==="ok")h+='<div class="hint">هويتك موثقة.</div>';
+ else if(s==="pending")h+='<div class="card">هويتك تحت المراجعة. هيجيلك إشعار لما تتوثق.</div>';
+ else h+='<div class="card"><h3>وثّق هويتك الأول</h3>'+(s==="rejected"?'<div class="note">اترفضت الصور، ارفع صور أوضح.</div>':'')+
+  '<label for="i-c">صورة البطاقة</label><input type="file" id="i-c" accept="image/*">'+(IDF.c?'<div class="hint">✓ تم اختيار الصورة: '+esc(IDF.c.name)+'</div>':'')+'<label for="i-s">سيلفي وانت ماسك البطاقة</label><input type="file" id="i-s" accept="image/*" capture="user">'+(IDF.s?'<div class="hint">✓ تم اختيار الصورة: '+esc(IDF.s.name)+'</div>':'')+
+  '<div class="row"><button class="btn" data-a="idsend">إرسال للتوثيق</button></div></div>';
+ h+='<div class="card"><h3>حساب استلام الفلوس</h3>'+(MP?'':'<div class="note">لازم تسجّل رقم فودافون كاش أو حساب انستا باي قبل ما تستلم أي مهمة.</div>')+'<label for="po">رقم الموبايل أو حساب انستا باي</label><input id="po" value="'+esc(MP)+'" autocomplete="off"><div class="row"><button class="btn" data-a="po">حفظ</button></div></div>';
+ var due=0,paid=0;T.forEach(function(t){if(t.worker===U.id){if(t.pay==="due")due+=t.net;if(t.pay==="paid")paid+=t.net}});
+ if(due||paid)h+='<div class="card"><div class="meta"><span>مستحق ليك (في انتظار التحويل): <b>'+due+' جنيه</b></span><span>اتحوّل ليك: <b>'+paid+' جنيه</b></span></div></div>';
+ if(REC){var X=REC;h+='<div class="card" style="border:2px solid var(--bad)"><h3>● الدوام شغال <span id="rt">0:00:00</span></h3><video id="live" muted playsinline autoplay></video><div id="rs" class="hint"></div><div class="hint">سيب الصفحة مفتوحة والشاشة منورة. التصوير بيترفع كل نص دقيقة والبراند والإدارة بيتابعوك. باقي على المهلة <b data-dl="'+Date.parse(X.t.deadline)+'">'+mmss(Date.parse(X.t.deadline)-now)+'</b></div><div class="row"><button class="btn bad" data-a="recstop">إنهاء الدوام وتسليم</button></div></div>'}
+ if(OFFER){var o=T.filter(function(t){return t.id===OFFER.id})[0];if(o)h+='<div class="card" style="border:2px solid var(--pri)"><h3>'+esc(o.title)+'</h3>'+taskInfo(o,true)+'<div>'+esc(o.descr)+'</div><div class="hint">البراند: '+esc(o.bp?o.bp.name:"")+' '+stars(o.bp)+'. العرض بينتهي بعد <b id="oc">'+Math.ceil((OFFER.end-now)/1000)+'</b> ثواني. بعد الاستلام عندك دقيقة إلغاء مجاني. هتصوّر الدوام كله ('+o.hours+' ساعات) والتصوير بيتراجع قبل ما تستلم فلوسك.</div><div class="row"><button class="btn" data-a="acc" data-i="'+o.id+'">أستلم</button><button class="btn ghost" data-a="dec">مش مناسبة</button></div></div>'}
+ var open=T.filter(function(t){return t.status==="open"}),mine=T.filter(function(t){return t.worker===U.id});
+ h+='<h2>مهام متاحة</h2><div class="hint">المبلغ المعروض هو اللي بتستلمه بعد عمولة المنصة ('+pct()+'%).</div>';
+ if(!open.length)h+='<div class="empty">مفيش مهام متاحة دلوقتي.</div>';
+ open.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3>'+taskInfo(t,true)+'<div class="hint">البراند: '+esc(t.bp?t.bp.name:"")+' '+stars(t.bp)+'</div><div class="row"><button class="btn" data-a="offer" data-i="'+t.id+'">شوف العرض</button></div></div>'});
+ h+='<h2>مهامي</h2>';
+ if(!mine.length)h+='<div class="empty">استلم مهمة وهتظهر هنا.</div>';
+ mine.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><span class="badge b-'+t.status+'">'+ST[t.status]+'</span>'+taskInfo(t,t.status!=="approved");
+  if(t.note)h+='<div class="note">ملاحظة المراجع: '+esc(t.note)+'</div>';
+  if(t.status==="taken"){h+='<div class="hint">باقي على التسليم: <b data-dl="'+Date.parse(t.deadline)+'">'+mmss(Date.parse(t.deadline)-now)+'</b>. لو خلصت المهلة بتتعرض على منفذ تاني بزيادة 10%.</div><div class="hint">اتسجّل: '+hms(CS[t.id]||0)+' من '+hms(Math.floor(t.hours*3600*0.9))+' (الحد الأدنى للتسليم)</div><div class="row">';
+   if(Date.parse(t.grace)>now)h+='<button class="btn ghost" data-a="cancel" data-i="'+t.id+'" data-g="'+Date.parse(t.grace)+'">إلغاء مجاني (أول دقيقة)</button>';
+   if(!REC)h+='<button class="btn" data-a="rec" data-i="'+t.id+'">'+(CS[t.id]?'كمّل التصوير':'ابدأ الدوام والتصوير')+'</button>';
+   h+='</div>'}
+  if(t.status==="review")h+='<div class="hint">التسجيل بيتراجع.</div>';
+  if(t.status==="approved")h+='<div class="hint">مستحقاتك: <b>'+t.net+' جنيه</b> — '+(t.pay==="paid"?'اتحوّلت ليك ✓':'في انتظار التحويل من الإدارة')+'</div>'+rateBtns(t);
+  h+='</div>'});
+ return h}
+
+function sumHtml(t){var tot=0,gaps=0,far=0,i,c,p;
+ for(i=0;i<CH.length;i++){c=CH[i];tot+=c.dur;if(i){p=CH[i-1];if(Date.parse(c.at)-(Date.parse(p.at)+p.dur*1000)>20000)gaps++}}
+ for(i=1;i<CH.length;i++)if(CH[0].lat!=null&&CH[i].lat!=null)far=Math.max(far,dist(CH[0],CH[i]));
+ var last=CH.length?CH[CH.length-1]:null,ago=last?Math.round((Date.now()-Date.parse(last.at)-last.dur*1000)/1000):0;
+ return '<div class="meta"><span>المسجّل: <b>'+hms(tot)+'</b> من '+hms(t.hours*3600)+'</span><span>فجوات: <b>'+gaps+'</b></span>'+(far>0?'<span>أقصى تحرك: <b>'+Math.round(far)+' متر</b></span>':'')+(t.status==="taken"&&last?'<span class="'+(ago>180?'rd':'')+'">آخر لقطة من '+(ago<90?'لحظات':Math.round(ago/60)+' دقيقة')+'</span>':'')+'</div>'}
+function watchV(){
+ var t=T.filter(function(x){return x.id===WATCH})[0];
+ if(!t)return '<div class="card">المهمة مش موجودة <button class="btn ghost" data-a="wclose">رجوع</button></div>';
+ var h='<div class="card"><div class="top"><b>'+esc(t.title)+'</b><span class="sp"></span><button class="btn ghost" data-a="wclose">رجوع</button></div><div class="meta"><span>المنفذ: '+esc(t.wp?t.wp.name:"")+'</span><span>'+ST[t.status]+'</span></div><div id="wsum">'+sumHtml(t)+'</div>';
+ if(!CH.length)h+='<div class="empty">لسه مفيش لقطات.</div>';
+ else h+='<video id="wv" controls playsinline muted autoplay></video><div class="row"><button class="btn ghost" data-a="wprev">السابق</button><span id="wpos" class="hint"></span><button class="btn ghost" data-a="wnext">التالي</button><button class="btn" data-a="wlast">آخر لقطة</button></div><div id="wmeta" class="hint"></div><div class="hint">التسجيل بيوصل كل نص دقيقة تقريباً، والمشغّل بيكمّل اللقطات ورا بعض.</div>';
+ if(ME.role==="admin"&&t.status==="review")h+='<label for="n-'+t.id+'">سبب الرفض</label><input id="n-'+t.id+'"><div class="row"><button class="btn ok" data-a="ok" data-i="'+t.id+'">قبول</button><button class="btn bad" data-a="no" data-i="'+t.id+'">رفض وإعادة التسجيل</button></div>';
+ return h+'</div>'}
+async function plPlay(i){if(!CH.length)return;i=Math.max(0,Math.min(CH.length-1,i));PL.i=i;var c=CH[i],u=await url("proofs",c.path);if(PL.i!==i)return;
+ var v=$("wv");if(v){v.src=u;var pr=v.play();if(pr&&pr.catch)pr.catch(function(){})}
+ var p=$("wpos");if(p)p.textContent=(i+1)+" / "+CH.length;
+ var m=$("wmeta");if(m)m.innerHTML=new Date(c.at).toLocaleTimeString("ar-EG")+(c.lat!=null?' · <a href="https://maps.google.com/?q='+c.lat+','+c.lng+'" target="_blank" rel="noopener">الموقع</a>':'')}
+async function fetchCH(){var r=await sb.from("chunks").select("*").eq("task",WATCH).eq("void",false).order("at",{ascending:false}).limit(1000);CH=(r.data||[]).reverse()}
+async function openWatch(id){WATCH=id;await fetchCH();var t=T.filter(function(x){return x.id===id})[0];PL.i=t&&t.status==="taken"?Math.max(0,CH.length-1):0;draw()}
+async function refreshWatch(){if(!WATCH)return;var old=CH.length,wasLast=PL.i===old-1;await fetchCH();if(!WATCH)return;
+ var t=T.filter(function(x){return x.id===WATCH})[0],x=$("wsum");if(x&&t)x.innerHTML=sumHtml(t);
+ var v=$("wv"),p=$("wpos");if(p)p.textContent=(PL.i+1)+" / "+CH.length;
+ if(CH.length>old&&wasLast&&(!v||v.ended||v.paused))plPlay(old)}
+
+function sum(f){return T.reduce(function(a,t){return a+(f(t)||0)},0)}
+function adminV(){
+ var held=sum(function(t){return t.pay==="held"?t.paid_amount:0}),due=sum(function(t){return t.pay==="due"?t.net:0}),rf=sum(function(t){return t.pay==="refund"?t.paid_amount:0}),earn=sum(function(t){return t.pay==="due"||t.pay==="paid"?t.fee:0});
+ var h='<div class="card"><h3>الحسابات</h3><div class="meta"><span>فلوس محجوزة: <b>'+held+'</b></span><span>مستحق للمنفذين: <b>'+due+'</b></span><span>مرتجعات: <b>'+rf+'</b></span><span>أرباح وقفة: <b>'+earn+'</b></span></div>'+
+ '<label for="s-c">عمولة وقفة (%)</label><input id="s-c" type="number" min="0" max="60" value="'+esc(S.commission_pct)+'"><label for="s-p">بيانات التحويل اللي بتظهر للبراندز (رقم انستا باي / فودافون كاش + الاسم)</label><textarea id="s-p" rows="2">'+esc(S.pay_info)+'</textarea><div class="row"><button class="btn" data-a="setsave">حفظ الإعدادات</button></div></div>';
+ var tr=T.filter(function(t){return t.status==="unpaid"&&t.pay==="proof"});
+ h+='<h2>تحويلات من البراندز ('+tr.length+')</h2>';if(!tr.length)h+='<div class="empty">مفيش تحويلات منتظرة.</div>';
+ tr.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><div class="meta"><span>البراند: '+esc(t.bp?t.bp.name:"")+'</span><span class="rew">المطلوب '+t.amount+' جنيه</span></div><img alt="صورة التحويل" src="'+(t.pu||"")+'"><label for="pn-'+t.id+'">سبب الرفض (لو التحويل ما وصلش)</label><input id="pn-'+t.id+'"><div class="row"><button class="btn ok" data-a="payok" data-i="'+t.id+'">وصلت الفلوس</button><button class="btn bad" data-a="payno" data-i="'+t.id+'">ما وصلتش</button></div></div>'});
+ var du=T.filter(function(t){return t.pay==="due"});
+ h+='<h2>فلوس مستحقة للمنفذين ('+du.length+')</h2>';if(!du.length)h+='<div class="empty">مفيش مستحقات.</div>';
+ du.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><div class="meta"><span>المنفذ: '+esc(t.wp?t.wp.name:"")+'</span><span class="rew">حوّل '+t.net+' جنيه</span><span>العمولة '+t.fee+'</span></div><div class="note">حساب المنفذ: '+esc(PO[t.worker]||"(مفيش)")+'</div><label for="rf-'+t.id+'">رقم العملية (اختياري)</label><input id="rf-'+t.id+'"><div class="row"><button class="btn ok" data-a="paid" data-i="'+t.id+'">تم التحويل</button></div></div>'});
+ var rf2=T.filter(function(t){return t.pay==="refund"});
+ if(rf2.length){h+='<h2>مرتجعات ('+rf2.length+')</h2>';rf2.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><div class="meta"><span>البراند: '+esc(t.bp?t.bp.name:"")+'</span><span class="rew">رجّع '+t.paid_amount+' جنيه</span></div><div class="row"><button class="btn ok" data-a="refunded" data-i="'+t.id+'">تم الرد</button></div></div>'})}
+ var rv=T.filter(function(t){return t.status==="review"});
+ h+='<h2>تسجيلات للمراجعة ('+rv.length+')</h2>';if(!rv.length)h+='<div class="empty">مفيش تسجيلات.</div>';
+ rv.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3>'+taskInfo(t)+'<div class="meta"><span>المنفذ: '+esc(t.wp?t.wp.name:"")+'</span></div><div class="row"><button class="btn" data-a="watch" data-i="'+t.id+'">افتح التسجيل وراجع</button></div></div>'});
+ var rn=T.filter(function(t){return t.status==="taken"});
+ if(rn.length){h+='<h2>شغالين دلوقتي ('+rn.length+')</h2>';rn.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><div class="meta"><span>المنفذ: '+esc(t.wp?t.wp.name:"")+'</span></div><div class="row"><button class="btn ghost" data-a="watch" data-i="'+t.id+'">👁 متابعة</button></div></div>'})}
+ h+='<h2>طلبات توثيق الهوية</h2>';
+ if(!PI.length)h+='<div class="empty">مفيش طلبات.</div>';
+ PI.forEach(function(p){h+='<div class="card"><h3>'+esc(p.name)+'</h3><img alt="البطاقة" src="'+p.cu+'"><img alt="السيلفي" src="'+p.su+'"><div class="row"><button class="btn ok" data-a="idok" data-i="'+p.id+'">توثيق</button><button class="btn bad" data-a="idno" data-i="'+p.id+'">رفض</button></div></div>'});
+ var ap=T.filter(function(t){return t.status==="approved"}).slice(0,10);
+ if(ap.length){h+='<h2>مهام منتهية</h2><div class="hint">امسح لقطات الفيديو بعد ما تخلص عشان توفر مساحة.</div>';ap.forEach(function(t){h+='<div class="card"><b>'+esc(t.title)+'</b><div class="row"><button class="btn ghost" data-a="watch" data-i="'+t.id+'">شوف</button><button class="btn ghost" data-a="purge" data-i="'+t.id+'">🗑 مسح اللقطات</button></div></div>'})}
+ return h}
+
+function draw(){
+ var el=$("app"),kp=keep();
+ if(!U||!ME){el.innerHTML=authV();if(NOKEEP)NOKEEP=false;else restore(kp);return}
+ var un=N.filter(function(n){return!n.seen}).length,rn={brand:"براند",worker:"منفذ",admin:"أدمن"};
+ var h='<div class="top"><b>'+esc(ME.name)+'</b><span class="badge">'+rn[ME.role]+'</span><span>'+stars(ME)+'</span><span class="sp"></span><button class="btn ghost" data-a="bell" aria-label="الإشعارات">🔔 '+un+'</button><button class="btn ghost" data-a="out">خروج</button></div>';
+ if(BELL){h+='<div class="card">';if(!N.length)h+='<div class="hint">مفيش إشعارات.</div>';N.forEach(function(n){h+='<div class="hint" style="color:var(--ink)">'+esc(n.txt)+'</div>'});h+='</div>'}
+ h+=WATCH?watchV():ME.role==="brand"?brandV():ME.role==="admin"?adminV():workerV();
+ el.innerHTML=h;if(NOKEEP)NOKEEP=false;else restore(kp);
+ if(REC&&$("live")){$("live").srcObject=REC.st;var pp=$("live").play();if(pp&&pp.catch)pp.catch(function(){})}
+ if(WATCH&&CH.length)plPlay(PL.i);
+}
+
+function hasMR(){return typeof MediaRecorder!=="undefined"&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia}
+function getCam(){return navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:640},height:{ideal:480},frameRate:{ideal:15}},audio:false})}
+async function recStart(id){
+ if(REC)return;
+ if(!hasMR()){toast("المتصفح ده مش بيدعم التصوير. استخدم كروم أو سفاري حديث");return}
+ var t=T.filter(function(x){return x.id===id})[0];if(!t)return;
+ var pos,st;
+ try{pos=await new Promise(function(y,n){navigator.geolocation.getCurrentPosition(y,n,{enableHighAccuracy:true,timeout:15000})})}catch(x){toast("فعّل الموقع عشان نثبت مكانك");return}
+ try{st=await getCam()}catch(x){toast("اسمح بالكاميرا");return}
+ var mt=MediaRecorder.isTypeSupported("video/webm")?"video/webm":"video/mp4";
+ REC={id:id,st:st,mt:mt,t:t,pos:{lat:pos.coords.latitude,lng:pos.coords.longitude},q:[],busy:false,pre:CS[id]||0,done:0,up:0,stopping:false,fin:false,fail:0,err:"",warn:"",lost:false,wl:null,cur:null,t0:0,timer:0,gps:null};
+ REC.gps=navigator.geolocation.watchPosition(function(p){if(REC)REC.pos={lat:p.coords.latitude,lng:p.coords.longitude}},function(){},{enableHighAccuracy:true,maximumAge:20000});
+ try{if(navigator.wakeLock)REC.wl=await navigator.wakeLock.request("screen")}catch(x){}
+ try{if(window.WaqfaNative)WaqfaNative.keepOn(true)}catch(x){}
+ bindTrack();seg();draw();
+}
+function bindTrack(){var X=REC,tr=X.st.getVideoTracks()[0];if(tr)tr.onended=function(){camLost()}}
+function camLost(){var X=REC;if(!X||X.stopping)return;X.lost=true;X.warn="الكاميرا وقفت! ارجع للصفحة وسيب الشاشة منورة، أو دوس شغّل الكاميرا";try{if(navigator.vibrate)navigator.vibrate([300,100,300])}catch(e){}}
+function seg(){
+ var X=REC;if(!X||X.stopping||X.cur)return;
+ var tr=X.st.getVideoTracks()[0];if(!tr||tr.readyState!=="live"){camLost();return}
+ var mr,ch=[],t0=Date.now();
+ try{mr=new MediaRecorder(X.st,{mimeType:X.mt,videoBitsPerSecond:150000})}catch(e){X.warn="مش قادر يبدأ التسجيل";return}
+ mr.ondataavailable=function(e){if(e.data&&e.data.size)ch.push(e.data)};
+ mr.onstop=function(){clearTimeout(X.timer);var d=Math.min(45,Math.floor((Date.now()-t0)/1000));
+  if(ch.length&&d>=1){X.q.push({blob:new Blob(ch,{type:X.mt}),at:new Date(t0).toISOString(),d:d,la:X.pos.lat,lo:X.pos.lng});X.done+=d}
+  X.cur=null;if(X.stopping)X.fin=true;else seg();pump()};
+ X.cur=mr;X.t0=t0;X.lost=false;X.warn="";mr.start();
+ X.timer=setTimeout(function(){if(mr.state==="recording")mr.stop()},SEGMS);
+}
+async function pump(){
+ var X=REC;if(!X||X.busy||!X.q.length)return;X.busy=true;
+ try{while(X.q.length){var c=X.q[0],path=U.id+"/"+X.id+"/"+Date.parse(c.at)+(X.mt==="video/webm"?".webm":".mp4");
+  var u=await sb.storage.from("proofs").upload(path,c.blob,{contentType:X.mt});
+  if(u.error&&!/exists|duplicate|409/i.test(String(u.error.message)+String(u.error.statusCode||""))){X.fail++;X.err=u.error.message;break}
+  var r=await sb.rpc("add_chunk",{t:X.id,p:path,a:c.at,d:c.d,la:c.la,lo:c.lo});
+  if(r.error){if(/المهمة|المهلة/.test(r.error.message)){recAbort(r.error.message);return}X.fail++;X.err=r.error.message;break}
+  X.q.shift();X.up+=c.d;X.fail=0;X.err=""}}
+ catch(e){X.fail++;X.err=String(e&&e.message||e)}
+ X.busy=false;
+}
+function recCleanup(X){X.stopping=true;clearTimeout(X.timer);try{if(X.cur&&X.cur.state==="recording"){X.cur.onstop=null;X.cur.stop()}}catch(e){}
+ try{X.st.getTracks().forEach(function(t){t.stop()})}catch(e){}
+ try{if(X.gps!=null)navigator.geolocation.clearWatch(X.gps)}catch(e){}
+ try{if(X.wl)X.wl.release()}catch(e){}
+ try{if(window.WaqfaNative)WaqfaNative.keepOn(false)}catch(e){}}
+function recAbort(m){var X=REC;if(!X)return;recCleanup(X);REC=null;toast(m);load()}
+async function recover(){
+ var X=REC;if(!X||X.stopping)return;
+ try{if(navigator.wakeLock&&(!X.wl||X.wl.released))X.wl=await navigator.wakeLock.request("screen")}catch(e){}
+ var tr=X.st.getVideoTracks()[0];
+ if(!tr||tr.readyState==="ended"){try{X.st=await getCam();bindTrack();X.warn="";X.lost=false;X.cur=null;seg();draw()}catch(e){X.warn="الكاميرا واقفة. دوس شغّل الكاميرا"}}
+}
+async function recFinish(){
+ var X=REC;if(!X||X.stopping)return;
+ var cur=X.cur?Math.floor((Date.now()-X.t0)/1000):0,need=Math.floor(X.t.hours*3600*0.9),have=X.pre+X.done+cur;
+ if(have<need){toast("لسه ناقص "+Math.ceil((need-have)/60)+" دقيقة من وقت الدعاية");return}
+ X.stopping=true;toast("جاري إنهاء الرفع...");
+ if(X.cur&&X.cur.state==="recording")X.cur.stop();else X.fin=true;
+ var w=0;while(!(X.fin&&!X.q.length&&!X.busy)&&w<120&&REC===X){await new Promise(function(r){setTimeout(r,500)});pump();w++}
+ if(REC!==X)return;
+ if(X.q.length||!X.fin){X.stopping=false;X.fin=false;toast("النت ضعيف ولسه في لقطات ما اترفعتش. فضّل فاتح الصفحة");seg();return}
+ var r=await sb.rpc("submit_session",{t:X.id});
+ if(r.error){toast(ar(r.error.message));X.stopping=false;X.fin=false;seg();return}
+ recCleanup(X);REC=null;toast("اتسلّم للمراجعة");load();
+}
+function recStatus(){var X=REC,h='مرفوع: <b>'+hms(X.pre+X.up)+'</b> من '+hms(X.t.hours*3600)+' (الحد الأدنى '+hms(Math.floor(X.t.hours*3600*0.9))+')'+(X.q.length?' · في انتظار رفع '+X.q.length+' لقطة':'');
+ if(X.err)h+='<div class="note">مشكلة في الرفع: '+esc(ar(X.err))+'. بنحاول تاني لوحدنا.</div>';
+ if(X.warn)h+='<div class="note">'+esc(X.warn)+'</div><div class="row"><button class="btn" data-a="recfix">شغّل الكاميرا</button></div>';
+ return h}
+
+document.addEventListener("click",async function(e){
+ var b=e.target.closest("[data-a]");if(!b)return;
+ var a=b.dataset.a,i=+b.dataset.i,v=function(k){return $(k).value.trim()};
+ if(a==="mode"){MODE=MODE==="in"?"up":"in";draw()}
+ else if(a==="terms"){TERMS=!TERMS;draw()}
+ else if(a==="auth"){if(MODE==="up"&&!$("a-c").checked){toast("لازم توافق على الشروط الأول");return}var em=v("a-e"),pw=$("a-p").value,r=MODE==="in"?await sb.auth.signInWithPassword({email:em,password:pw}):await sb.auth.signUp({email:em,password:pw,options:{data:{name:v("a-n"),role:$("a-r").value}}});
+  if(r.error)toast(ar(r.error.message));else if(MODE==="up"&&r.data.user&&r.data.user.identities&&!r.data.user.identities.length){toast("الإيميل ده مسجل قبل كده، ادخل بيه");MODE="in";draw()}else if(!r.data.session)toast("أكّد الإيميل من الرسالة اللي وصلتك وبعدين ادخل")}
+ else if(a==="out"){if(REC&&!confirm("الدوام شغال. لو خرجت التصوير هيقف. تخرج؟"))return;if(REC){recCleanup(REC);REC=null}await sb.auth.signOut()}
+ else if(a==="bell"){BELL=!BELL;draw();if(BELL){await sb.from("notes").update({seen:true}).eq("seen",false);N.forEach(function(n){n.seen=true})}}
+ else if(a==="add"){var am=Math.round(+v("f-a")),hh=+v("f-h")||1,mm=+v("f-m")||60;
+  if(!v("f-t")||!v("f-p")||!am){toast("كمّل العنوان والمكان والمبلغ");return}
+  if(hh<1||hh>8){toast("ساعات الدعاية من 1 لـ 8");return}
+  if(mm<hh*60+15){toast("مهلة التسليم لازم تكون "+(hh*60+15)+" دقيقة على الأقل");return}
+  var q=await sb.from("tasks").insert({brand:U.id,title:v("f-t"),place:v("f-p"),hours:hh,mins:mm,amount:am,descr:v("f-d")});
+  if(q.error)toast(ar(q.error.message));else{NOKEEP=true;toast("اتنشرت. حوّل المبلغ وارفع صورة التحويل عشان تظهر للمنفذين");load()}}
+ else if(a==="payup"){var f=PF[i];if(!f){toast("اختار صورة التحويل");return}
+  var pp=U.id+"/pay-"+i+"-"+Date.now(),u=await sb.storage.from("pay").upload(pp,f,{contentType:f.type||"image/jpeg"});
+  if(u.error){toast(ar(u.error.message)||"فشل الرفع");return}
+  if(await rpc("pay_proof",{t:i,p:pp})){delete PF[i];toast("اتبعت للإدارة");load()}}
+ else if(a==="bcancel"){if(!confirm("تلغي المهمة؟"))return;if(await rpc("brand_cancel",{t:i})){toast("اتلغت");load()}}
+ else if(a==="po"){if(await rpc("set_payout",{p:v("po")})){toast("اتحفظ");load()}}
+ else if(a==="idsend"){var c=IDF.c,s=IDF.s;if(!c||!s){toast("ارفع صورة البطاقة والسيلفي");return}
+  var p1=U.id+"/card-"+Date.now(),p2=U.id+"/self-"+Date.now();
+  var u1=await sb.storage.from("ids").upload(p1,c),u2=await sb.storage.from("ids").upload(p2,s);
+  if(u1.error||u2.error){toast("فشل الرفع");return}
+  if(await rpc("submit_id",{c:p1,s:p2})){IDF={};toast("اتبعت للتوثيق");load()}}
+ else if(a==="offer"){if(ME.idstat!=="ok"){toast("وثّق هويتك الأول");return}OFFER={id:i,end:Date.now()+10000};draw();window.scrollTo(0,0)}
+ else if(a==="dec"){OFFER=null;draw()}
+ else if(a==="acc"){OFFER=null;if(await rpc("accept_task",{t:i}))toast("استلمت المهمة");load()}
+ else if(a==="cancel"){if(await rpc("cancel_task",{t:i}))toast("اتلغت من غير عقوبة");load()}
+ else if(a==="rec"){recStart(i)}
+ else if(a==="recstop"){recFinish()}
+ else if(a==="recfix"){recover()}
+ else if(a==="watch"){openWatch(i)}
+ else if(a==="wclose"){WATCH=null;CH=[];load()}
+ else if(a==="wprev"){plPlay(PL.i-1)}
+ else if(a==="wnext"){plPlay(PL.i+1)}
+ else if(a==="wlast"){plPlay(CH.length-1)}
+ else if(a==="rate"){if(await rpc("rate",{t:i,s:+b.dataset.s}))toast("شكراً على التقييم");load()}
+ else if(a==="idok"||a==="idno"){if(await rpc("review_id",{u:b.dataset.i,ok:a==="idok"}))load()}
+ else if(a==="ok"||a==="no"){var nt=a==="no"?v("n-"+i):"";if(a==="no"&&!nt){toast("اكتب سبب الرفض");return}
+  if(await rpc("review_task",{t:i,ok:a==="ok",n:nt})){WATCH=null;CH=[];load()}}
+ else if(a==="payok"){if(await rpc("admin_pay_ok",{t:i})){toast("اتأكد، المهمة اتعرضت");load()}}
+ else if(a==="payno"){var pn=v("pn-"+i);if(!pn){toast("اكتب السبب");return}if(await rpc("admin_pay_no",{t:i,n:pn}))load()}
+ else if(a==="paid"){if(await rpc("admin_paid",{t:i,ref:v("rf-"+i)})){toast("اتسجل");load()}}
+ else if(a==="refunded"){if(await rpc("admin_refunded",{t:i})){toast("اتسجل");load()}}
+ else if(a==="setsave"){var o1=await rpc("set_setting",{key:"commission_pct",val:v("s-c")});if(o1&&await rpc("set_setting",{key:"pay_info",val:v("s-p")})){toast("اتحفظ");load()}}
+ else if(a==="purge"){if(!confirm("تمسح كل لقطات المهمة دي؟ مش هتقدر ترجعها."))return;
+  var cr=await sb.from("chunks").select("path").eq("task",i).limit(1000),ps=(cr.data||[]).map(function(x){return x.path});
+  if(ps.length){var d=await sb.storage.from("proofs").remove(ps);if(d.error){toast("فشل المسح");return}}
+  if(await rpc("admin_purge",{t:i})){toast("اتمسحت");load()}}
+});
+document.addEventListener("change",function(e){var t=e.target;
+ if(t.id==="i-c"||t.id==="i-s"){IDF[t.id==="i-c"?"c":"s"]=t.files[0]||null;draw()}
+ else if(t.id&&t.id.indexOf("p-")===0&&t.type==="file"){var k=+t.id.slice(2);if(t.files[0])PF[k]=t.files[0];else delete PF[k];draw()}});
+document.addEventListener("ended",function(e){if(e.target.id==="wv"&&PL.i<CH.length-1)plPlay(PL.i+1)},true);
+try{var CAP=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(CAP)CAP.addListener("backButton",function(){if(REC){toast("الدوام شغال. استخدم زر إنهاء الدوام");return}if(WATCH){WATCH=null;CH=[];load();return}if(BELL){BELL=false;draw();return}CAP.exitApp()})}catch(e){}
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&REC)recover()});
+window.addEventListener("beforeunload",function(e){if(REC){e.preventDefault();e.returnValue=""}});
+try{if(window.WaqfaNative)WaqfaNative.keepOn(false)}catch(e){}
+sb.auth.onAuthStateChange(function(ev,se){var id=se&&se.user?se.user.id:null;if(ev==="INITIAL_SESSION"||ev==="SIGNED_OUT"||id!==(U&&U.id))setTimeout(load,0)});
+sb.channel("live").on("postgres_changes",{event:"INSERT",schema:"public",table:"notes"},function(p){if(U&&p.new.usr===U.id){toast(p.new.txt);soft()}})
+ .on("postgres_changes",{event:"*",schema:"public",table:"tasks"},function(){soft()}).subscribe();
+setInterval(function(){
+ var now=Date.now(),i,x;tick++;
+ if(OFFER&&now>=OFFER.end){OFFER=null;toast("العرض انتهى");draw()}
+ x=$("oc");if(x&&OFFER)x.textContent=Math.ceil((OFFER.end-now)/1000);
+ if(REC){x=$("rt");if(x)x.textContent=hms(REC.pre+REC.done+(REC.cur?Math.floor((now-REC.t0)/1000):0));
+  x=$("rs");if(x)x.innerHTML=recStatus();
+  if(!REC.stopping){var tr=REC.st.getVideoTracks()[0];if(!REC.cur&&tr&&tr.readyState==="live")seg();
+   if(tick%5===0){pump();if(document.visibilityState==="visible")recover()}}}
+ x=document.querySelectorAll("[data-dl]");for(i=0;i<x.length;i++)x[i].textContent=mmss(+x[i].dataset.dl-now);
+ x=document.querySelectorAll("[data-g]");for(i=0;i<x.length;i++)if(now>+x[i].dataset.g)x[i].hidden=true;
+ if(tick%20===0&&WATCH)refreshWatch();
+ if(tick%30===0&&U)soft();
+},1000);
+</script>
+</body>
+</html>
