@@ -39,7 +39,7 @@ video,img{width:100%;max-height:260px;object-fit:contain;border-radius:10px;back
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 var SB_URL="https://fonczgmjnjbgxyhhdpvi.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvbmN6Z21qbmpiZ3h5aGhkcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjQzNDAsImV4cCI6MjEwODYwMDM0MH0.s5jqDYr2yWEUnkTDwmxFNWwy5O7KSaNicAYrANNEmDs";
-var sb=supabase.createClient(SB_URL,SB_KEY),U=null,ME=null,T=[],N=[],PI=[],R={},OFFER=null,REC=null,BELL=false,MODE="in",tick=0,IDF={},PF={},S={commission_pct:"15",pay_info:""},MP="",PO={},CS={},WATCH=null,CH=[],PL={i:0},NOKEEP=false,TERMS=false,SEGMS=30000;
+var sb=supabase.createClient(SB_URL,SB_KEY),U=null,ME=null,T=[],N=[],PI=[],R={},OFFER=null,REC=null,BELL=false,MODE="in",tick=0,IDF={},PF={},S={commission_pct:"15",pay_info:""},MP="",PO={},CS={},WATCH=null,CH=[],PL={i:0},NOKEEP=false,TERMS=false,CHAT=null,MS=[],SEGMS=30000;
 var $=function(i){return document.getElementById(i)};
 var ST={unpaid:"في انتظار الدفع",open:"متاحة",taken:"قيد التنفيذ",review:"تحت المراجعة",approved:"تمت الموافقة",cancelled:"ملغية"};
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
@@ -77,14 +77,14 @@ async function load(){
   for(var i=0;i<T.length;i++)if(T[i].status==="unpaid"&&T[i].pay==="proof"&&T[i].pay_proof)T[i].pu=await url("pay",T[i].pay_proof)}
  draw();
 }
-function soft(){var a=document.activeElement.tagName;if(!REC&&!WATCH&&!IDF.c&&!IDF.s&&!Object.keys(PF).length&&a!=="INPUT"&&a!=="TEXTAREA"&&a!=="SELECT")load()}
+function soft(){var a=document.activeElement.tagName;if(!REC&&!WATCH&&!CHAT&&!IDF.c&&!IDF.s&&!Object.keys(PF).length&&a!=="INPUT"&&a!=="TEXTAREA"&&a!=="SELECT")load()}
 
 function termsHtml(){return '<div class="note" style="background:var(--blubg);color:var(--ink)"><b>الشروط وسياسة الخصوصية</b><br>• وقفة منصة بتوصّل البراندز بمنفذين لمهام الدعاية.<br>• صورة البطاقة والسيلفي بتُستخدم للتحقق من الهوية بس، ومش بتتعرض للبراندز، ومحفوظة بشكل خاص.<br>• أثناء المهمة بيتسجّل فيديو من الكاميرا ومعاه الوقت والموقع، ويشوفه البراند صاحب المهمة والإدارة.<br>• المبلغ بيتحجز لحد ما المهمة تتنفذ، وبيتحوّل للمنفذ بعد قبول التسجيل ناقص عمولة المنصة.<br>• التلاعب في التسجيل أو التصوير في غير المكان المطلوب ممكن يخلّي المهمة تترفض.<br>• تقدر تطلب مسح بياناتك بالتواصل مع الإدارة.</div>'}
 function authV(){var up=MODE==="up";
  return '<h1>وقفة</h1><div class="card"><h3>'+(up?"حساب جديد":"دخول")+'</h3>'+
  (up?'<label for="a-n">الاسم</label><input id="a-n"><label for="a-r">أنا</label><select id="a-r"><option value="worker">منفذ</option><option value="brand">براند</option></select>':'')+
  '<label for="a-e">الإيميل</label><input id="a-e" type="email" autocomplete="email"><label for="a-p">كلمة السر (6 حروف على الأقل)</label><input id="a-p" type="password" autocomplete="current-password">'+
- (up?'<label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" id="a-c" style="width:auto;margin-top:6px"><span>أوافق على الشروط وسياسة الخصوصية، وإن الكاميرا والموقع يتسجلوا أثناء تنفيذ المهام.</span></label><div class="row"><button class="btn ghost" data-a="terms">اقرأ الشروط</button></div>'+(TERMS?termsHtml():''):'')+'<div class="row"><button class="btn" data-a="auth">'+(up?"إنشاء الحساب":"دخول")+'</button><button class="btn ghost" data-a="mode">'+(up?"عندي حساب":"حساب جديد")+'</button></div></div>'}
+ (up?'<label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input type="checkbox" id="a-c" style="width:auto;margin-top:6px"><span>أوافق على الشروط وسياسة الخصوصية، وإن الكاميرا والموقع يتسجلوا أثناء تنفيذ المهام.</span></label><div class="row"><button class="btn ghost" data-a="terms">اقرأ الشروط</button></div>'+(TERMS?termsHtml():''):'')+'<div class="row"><button class="btn" data-a="auth">'+(up?"إنشاء الحساب":"دخول")+'</button><button class="btn ghost" data-a="mode">'+(up?"عندي حساب":"حساب جديد")+'</button></div>'+(window.WaqfaNative?'':'<div class="hint" style="margin-top:12px"><a href="https://github.com/abdulrhmansalem87-bot/Yn/releases/latest/download/waqfa.apk">📱 حمّل تطبيق أندرويد</a></div>')+'</div>'}
 function taskInfo(t,w){return '<div class="meta"><span>'+esc(t.place)+'</span><span>'+t.hours+' ساعات دعاية</span><span>مهلة التسليم '+t.mins+' دقيقة</span><span class="rew">'+(w?'تاخد '+wnet(t)+' جنيه':t.amount+' جنيه')+'</span>'+(t.relisted?'<span class="badge b-taken">أُعيد عرضها +10%</span>':'')+'</div>'}
 function payBrand(t){
  if(t.status==="unpaid"){
@@ -110,7 +110,7 @@ function brandV(){
  mine.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><span class="badge b-'+t.status+'">'+ST[t.status]+'</span>'+taskInfo(t)+
   (t.wp?'<div class="hint">المنفذ: '+esc(t.wp.name)+' '+stars(t.wp)+'</div>':'')+payBrand(t)+
   (t.status==="taken"||t.status==="review"||t.status==="approved"?'<div class="row"><button class="btn ghost" data-a="watch" data-i="'+t.id+'">👁 متابعة الدوام</button></div>':'')+
-  (t.status==="approved"?rateBtns(t):'')+'</div>'});
+  (canChat(t)?'<div class="row"><button class="btn ghost" data-a="chat" data-i="'+t.id+'">💬 رسائل المنفذ</button></div>':'')+(t.status==="approved"?rateBtns(t):'')+'</div>'});
  return h}
 
 function workerV(){
@@ -133,12 +133,13 @@ function workerV(){
  if(!mine.length)h+='<div class="empty">استلم مهمة وهتظهر هنا.</div>';
  mine.forEach(function(t){h+='<div class="card"><h3>'+esc(t.title)+'</h3><span class="badge b-'+t.status+'">'+ST[t.status]+'</span>'+taskInfo(t,t.status!=="approved");
   if(t.note)h+='<div class="note">ملاحظة المراجع: '+esc(t.note)+'</div>';
-  if(t.status==="taken"){h+='<div class="hint">باقي على التسليم: <b data-dl="'+Date.parse(t.deadline)+'">'+mmss(Date.parse(t.deadline)-now)+'</b>. لو خلصت المهلة بتتعرض على منفذ تاني بزيادة 10%.</div><div class="hint">اتسجّل: '+hms(CS[t.id]||0)+' من '+hms(Math.floor(t.hours*3600*0.9))+' (الحد الأدنى للتسليم)</div><div class="row">';
+  if(t.status==="taken"){h+='<div class="hint">باقي على التسليم: <b data-dl="'+Date.parse(t.deadline)+'">'+mmss(Date.parse(t.deadline)-now)+'</b></div><div class="row">';
    if(Date.parse(t.grace)>now)h+='<button class="btn ghost" data-a="cancel" data-i="'+t.id+'" data-g="'+Date.parse(t.grace)+'">إلغاء مجاني (أول دقيقة)</button>';
    if(!REC)h+='<button class="btn" data-a="rec" data-i="'+t.id+'">'+(CS[t.id]?'كمّل التصوير':'ابدأ الدوام والتصوير')+'</button>';
    h+='</div>'}
   if(t.status==="review")h+='<div class="hint">التسجيل بيتراجع.</div>';
   if(t.status==="approved")h+='<div class="hint">مستحقاتك: <b>'+t.net+' جنيه</b> — '+(t.pay==="paid"?'اتحوّلت ليك ✓':'في انتظار التحويل من الإدارة')+'</div>'+rateBtns(t);
+  if(canChat(t))h+='<div class="row"><button class="btn ghost" data-a="chat" data-i="'+t.id+'">💬 رسائل البراند</button></div>';
   h+='</div>'});
  return h}
 
@@ -166,6 +167,17 @@ async function refreshWatch(){if(!WATCH)return;var old=CH.length,wasLast=PL.i===
  var v=$("wv"),p=$("wpos");if(p)p.textContent=(PL.i+1)+" / "+CH.length;
  if(CH.length>old&&wasLast&&(!v||v.ended||v.paused))plPlay(old)}
 
+function canChat(t){return !!t.worker&&(t.status==="taken"||t.status==="review"||t.status==="approved")}
+function msgsHtml(){if(!MS.length)return '<div class="empty">لسه مفيش رسائل. ابدأ المحادثة.</div>';
+ return MS.map(function(m){var me=m.sender===U.id;return '<div style="display:flex;justify-content:'+(me?'flex-start':'flex-end')+'"><div style="max-width:80%;padding:8px 12px;border-radius:12px;margin:3px 0;background:'+(me?'var(--pri)':'var(--line)')+';color:'+(me?'#fff':'var(--ink)')+'">'+esc(m.txt)+'<div style="font-size:11px;opacity:.7">'+new Date(m.created).toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"})+'</div></div></div>'}).join("")}
+function chatV(){
+ var t=T.filter(function(x){return x.id===CHAT})[0];
+ if(!t)return '<div class="card">المهمة مش موجودة <button class="btn ghost" data-a="cclose">رجوع</button></div>';
+ var other=ME.role==="brand"?(t.wp?t.wp.name:"المنفذ"):(t.bp?t.bp.name:"البراند");
+ return '<div class="card"><div class="top"><b>'+esc(t.title)+' · '+esc(other)+'</b><span class="sp"></span><button class="btn ghost" data-a="cclose">رجوع</button></div><div id="cm" style="max-height:50vh;overflow-y:auto">'+msgsHtml()+'</div>'+(canChat(t)&&ME.role!=="admin"?'<label for="m-txt">رسالتك</label><input id="m-txt" maxlength="500" autocomplete="off"><div class="row"><button class="btn" data-a="csend">إرسال</button></div>':'<div class="hint">المراسلة مقفولة.</div>')+'</div>'}
+async function fetchMS(){var r=await sb.from("msgs").select("*").eq("task",CHAT).order("created",{ascending:true}).limit(200);MS=r.data||[]}
+async function openChat(id){CHAT=id;await fetchMS();draw();var c=$("cm");if(c)c.scrollTop=c.scrollHeight}
+async function refreshChat(){if(!CHAT)return;var n=MS.length;await fetchMS();if(!CHAT)return;var c=$("cm");if(c&&MS.length!==n){c.innerHTML=msgsHtml();c.scrollTop=c.scrollHeight}}
 function sum(f){return T.reduce(function(a,t){return a+(f(t)||0)},0)}
 function adminV(){
  var held=sum(function(t){return t.pay==="held"?t.paid_amount:0}),due=sum(function(t){return t.pay==="due"?t.net:0}),rf=sum(function(t){return t.pay==="refund"?t.paid_amount:0}),earn=sum(function(t){return t.pay==="due"||t.pay==="paid"?t.fee:0});
@@ -197,7 +209,7 @@ function draw(){
  var un=N.filter(function(n){return!n.seen}).length,rn={brand:"براند",worker:"منفذ",admin:"أدمن"};
  var h='<div class="top"><b>'+esc(ME.name)+'</b><span class="badge">'+rn[ME.role]+'</span><span>'+stars(ME)+'</span><span class="sp"></span><button class="btn ghost" data-a="bell" aria-label="الإشعارات">🔔 '+un+'</button><button class="btn ghost" data-a="out">خروج</button></div>';
  if(BELL){h+='<div class="card">';if(!N.length)h+='<div class="hint">مفيش إشعارات.</div>';N.forEach(function(n){h+='<div class="hint" style="color:var(--ink)">'+esc(n.txt)+'</div>'});h+='</div>'}
- h+=WATCH?watchV():ME.role==="brand"?brandV():ME.role==="admin"?adminV():workerV();
+ h+=WATCH?watchV():CHAT?chatV():ME.role==="brand"?brandV():ME.role==="admin"?adminV():workerV();
  el.innerHTML=h;if(NOKEEP)NOKEEP=false;else restore(kp);
  if(REC&&$("live")){$("live").srcObject=REC.st;var pp=$("live").play();if(pp&&pp.catch)pp.catch(function(){})}
  if(WATCH&&CH.length)plPlay(PL.i);
@@ -307,6 +319,9 @@ document.addEventListener("click",async function(e){
  else if(a==="rec"){recStart(i)}
  else if(a==="recstop"){recFinish()}
  else if(a==="recfix"){recover()}
+ else if(a==="chat"){openChat(i)}
+ else if(a==="cclose"){CHAT=null;MS=[];load()}
+ else if(a==="csend"){var mt=v("m-txt");if(!mt)return;if(await rpc("send_msg",{t:CHAT,m:mt})){$("m-txt").value="";await fetchMS();var cm=$("cm");if(cm){cm.innerHTML=msgsHtml();cm.scrollTop=cm.scrollHeight}}}
  else if(a==="watch"){openWatch(i)}
  else if(a==="wclose"){WATCH=null;CH=[];load()}
  else if(a==="wprev"){plPlay(PL.i-1)}
@@ -329,8 +344,9 @@ document.addEventListener("click",async function(e){
 document.addEventListener("change",function(e){var t=e.target;
  if(t.id==="i-c"||t.id==="i-s"){IDF[t.id==="i-c"?"c":"s"]=t.files[0]||null;draw()}
  else if(t.id&&t.id.indexOf("p-")===0&&t.type==="file"){var k=+t.id.slice(2);if(t.files[0])PF[k]=t.files[0];else delete PF[k];draw()}});
+document.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.id==="m-txt"){e.preventDefault();var b=document.querySelector("[data-a=csend]");if(b)b.click()}});
 document.addEventListener("ended",function(e){if(e.target.id==="wv"&&PL.i<CH.length-1)plPlay(PL.i+1)},true);
-try{var CAP=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(CAP)CAP.addListener("backButton",function(){if(REC){toast("الدوام شغال. استخدم زر إنهاء الدوام");return}if(WATCH){WATCH=null;CH=[];load();return}if(BELL){BELL=false;draw();return}CAP.exitApp()})}catch(e){}
+try{var CAP=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(CAP)CAP.addListener("backButton",function(){if(REC){toast("الدوام شغال. استخدم زر إنهاء الدوام");return}if(WATCH){WATCH=null;CH=[];load();return}if(CHAT){CHAT=null;load();return}if(BELL){BELL=false;draw();return}CAP.exitApp()})}catch(e){}
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&REC)recover()});
 window.addEventListener("beforeunload",function(e){if(REC){e.preventDefault();e.returnValue=""}});
 try{if(window.WaqfaNative)WaqfaNative.keepOn(false)}catch(e){}
@@ -348,6 +364,7 @@ setInterval(function(){
  x=document.querySelectorAll("[data-dl]");for(i=0;i<x.length;i++)x[i].textContent=mmss(+x[i].dataset.dl-now);
  x=document.querySelectorAll("[data-g]");for(i=0;i<x.length;i++)if(now>+x[i].dataset.g)x[i].hidden=true;
  if(tick%20===0&&WATCH)refreshWatch();
+ if(tick%6===0&&CHAT)refreshChat();
  if(tick%30===0&&U)soft();
 },1000);
 </script>
